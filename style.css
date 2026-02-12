@@ -1,0 +1,267 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    touch-action: none;
+}
+
+/* ===== Экран поворота ===== */
+
+#rotate-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    color: #888;
+    font-size: 16px;
+    line-height: 1.5;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
+
+/* ===== Основное приложение ===== */
+
+#app {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+}
+
+/* Камера */
+
+#camera {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    transition: opacity 0.4s ease;
+}
+
+#camera.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Canvas скрыт */
+
+#snapshot-canvas {
+    display: none;
+}
+
+/* Сделанный снимок */
+
+#snapshot-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+#snapshot-img.visible {
+    opacity: 1;
+}
+
+/* Старое фото поверх */
+
+#overlay-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+#overlay-img.preview {
+    opacity: 0.15;
+}
+
+#overlay-img.compare {
+    opacity: 1;
+}
+
+/* ===== Галерея ===== */
+
+#gallery {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 80px;
+    z-index: 10;
+    padding: 0 16px;
+    transition: opacity 0.3s ease;
+}
+
+#gallery.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#gallery-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 0;
+}
+
+#gallery-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.thumb {
+    flex-shrink: 0;
+    width: 72px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.thumb:active {
+    transform: scale(0.95);
+}
+
+.thumb.active {
+    border-color: #fff;
+}
+
+/* ===== Кнопка съёмки ===== */
+
+#capture-btn {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2.5px solid rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    -webkit-appearance: none;
+    outline: none;
+}
+
+#capture-btn:active {
+    transform: translateY(-50%) scale(0.88);
+    background: rgba(255, 255, 255, 0.35);
+}
+
+#capture-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+/* ===== Слайдер сравнения ===== */
+
+#slider {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    touch-action: none;
+}
+
+#slider.hidden {
+    display: none;
+}
+
+#slider-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.7);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+#slider-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(255, 255, 255, 1);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+/* ===== Кнопка сброса ===== */
+
+#reset-btn {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    padding: 8px 18px;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    outline: none;
+    transition: opacity 0.3s ease, background 0.15s ease;
+}
+
+#reset-btn:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+#reset-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ===== Ориентация ===== */
+
+@media (orientation: portrait) {
+    #rotate-screen {
+        display: flex;
+    }
+    #app {
+        display: none;
+    }
+}
+
+@media (orientation: landscape) {
+    #rotate-screen {
+        display: none;
+    }
+    #app {
+        display: block;
+    }
+}

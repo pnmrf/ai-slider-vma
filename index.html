@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Ракурс</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Экран поворота -->
+    <div id="rotate-screen">
+        <p>Пожалуйста, поверните устройство<br>в альбомный режим</p>
+    </div>
+
+    <!-- Основное приложение -->
+    <div id="app">
+
+        <!-- Видео с камеры -->
+        <video id="camera" autoplay playsinline muted></video>
+
+        <!-- Скрытый canvas для снимка -->
+        <canvas id="snapshot-canvas"></canvas>
+
+        <!-- Сделанный снимок (нижний слой в режиме сравнения) -->
+        <img id="snapshot-img" alt="">
+
+        <!-- Старое фото поверх камеры / верхний слой сравнения -->
+        <img id="overlay-img" alt="">
+
+        <!-- Галерея миниатюр -->
+        <div id="gallery">
+            <div id="gallery-scroll">
+                <img class="thumb" src="1.jpg" data-src="1.jpg" alt="1">
+                <img class="thumb" src="2.jpg" data-src="2.jpg" alt="2">
+                <img class="thumb" src="3.jpg" data-src="3.jpg" alt="3">
+            </div>
+        </div>
+
+        <!-- Кнопка съёмки -->
+        <button id="capture-btn" aria-label="Сделать снимок"></button>
+
+        <!-- Слайдер сравнения -->
+        <div id="slider" class="hidden">
+            <div id="slider-line"></div>
+            <div id="slider-handle"></div>
+        </div>
+
+        <!-- Кнопка сброса -->
+        <button id="reset-btn" class="hidden">Сброс</button>
+
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
