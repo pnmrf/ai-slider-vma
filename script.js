@@ -2,22 +2,49 @@
     'use strict';
 
     // Элементы
-    const camera = document.getElementById('camera');
-    const snapshotCanvas = document.getElementById('snapshot-canvas');
-    const snapshotImg = document.getElementById('snapshot-img');
-    const overlayImg = document.getElementById('overlay-img');
-    const gallery = document.getElementById('gallery');
-    const captureBtn = document.getElementById('capture-btn');
-    const slider = document.getElementById('slider');
-    const sliderLine = document.getElementById('slider-line');
-    const sliderHandle = document.getElementById('slider-handle');
-    const resetBtn = document.getElementById('reset-btn');
-    const thumbs = document.querySelectorAll('.thumb');
+    var camera = document.getElementById('camera');
+    var snapshotCanvas = document.getElementById('snapshot-canvas');
+    var snapshotImg = document.getElementById('snapshot-img');
+    var overlayImg = document.getElementById('overlay-img');
+    var gallery = document.getElementById('gallery');
+    var captureBtn = document.getElementById('capture-btn');
+    var slider = document.getElementById('slider');
+    var sliderLine = document.getElementById('slider-line');
+    var sliderHandle = document.getElementById('slider-handle');
+    var topBar = document.getElementById('top-bar');
+    var resetBtn = document.getElementById('reset-btn');
+    var saveBtn = document.getElementById('save-btn');
+    var downloadLink = document.getElementById('download-link');
+    var thumbs = document.querySelectorAll('.thumb');
 
-    let stream = null;
-    let currentSrc = null;
-    let isCompareMode = false;
-    let sliderX = 0.5; // 0..1
+    // Ползунок прозрачности
+    var opacitySlider = document.getElementById('opacity-slider');
+    var opacityTrack = document.getElementById('opacity-track');
+    var opacityFill = document.getElementById('opacity-fill');
+    var opacityHandle = document.getElementById('opacity-handle');
+
+    var stream = null;
+    var currentSrc = null;
+    var isCompareMode = false;
+    var sliderX = 0.5;
+
+    // Прозрачность: 0.10 (верх) .. 0.90 (низ)
+    // opacityValue хранит реальную opacity overlay (0.10 .. 0.90)
+    // По умолчанию середина = 0.45 (примерно)
+    var OPACITY_MIN = 0.10;  // верх ползунка — максимальная прозрачность
+    var OPACITY_MAX = 0.90;  // низ ползунка — минимальная прозрачность
+    var opacityValue = 0.45;
+    // normalised: 0 = верх (min opacity), 1 = низ (max opacity)
+    // norm = (opacityValue - OPACITY_MIN) / (OPACITY_MAX - OPACITY_MIN)
+    // opacityValue = OPACITY_MIN + norm * (OPACITY_MAX - OPACITY_MIN)
+
+    function opacityToNorm(val) {
+        return (val - OPACITY_MIN) / (OPACITY_MAX - OPACITY_MIN);
+    }
+
+    function normToOpacity(n) {
+        return OPACITY_MIN + n * (OPACITY_MAX - OPACITY_MIN);
+    }
 
     // ===== Камера =====
 
@@ -46,6 +73,86 @@
         camera.srcObject = null;
     }
 
+    // ===== Применить прозрачность к overlay =====
+
+    function applyOverlayOpacity() {
+        if (!isCompareMode && overlayImg.classList.contains('preview')) {
+            overlayImg.style.opacity = opacityValue;
+        }
+    }
+
+    // ===== Обновление ползунка прозрачности =====
+
+    function updateOpacitySlider() {
+        var norm = opacityToNorm(opacityValue); // 0 = верх, 1 = низ
+        var trackHeight = opacityTrack.offsetHeight;
+        var pxFromBottom = (1 - norm) * trackHeight;
+        // Но ползунок: верх = min opacity (0.10), низ = max opacity (0.90)
+        // norm=0 -> handle вверху, norm=1 -> handle внизу
+        // handle top offset = norm * trackHeight
+        // fill height = (1 - norm) * 100%  — fill снизу показывает «сколько прозрачности»
+
+        var pct = norm * 100;
+        var fillPct = (1 - norm) * 100;
+
+        opacityHandle.style.bottom = fillPct + '%';
+        opacityFill.style.height = fillPct + '%';
+    }
+
+    // ===== Ползунок прозрачности — touch =====
+
+    function getOpacityNormFromEvent(e) {
+        var clientY;
+        if (e.touches && e.touches.length > 0) {
+            clientY = e.touches[0].clientY;
+        } else {
+            clientY = e.clientY;
+        }
+        var rect = opacityTrack.getBoundingClientRect();
+        // top = 0 (min opacity = 0.10), bottom = 1 (max opacity = 0.90)
+        var norm = (clientY - rect.top) / rect.height;
+        return Math.max(0, Math.min(1, norm));
+    }
+
+    opacitySlider.addEventListener('touchstart', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var norm = getOpacityNormFromEvent(e);
+        opacityValue = normToOpacity(norm);
+        updateOpacitySlider();
+        applyOverlayOpacity();
+    }, { passive: false });
+
+    opacitySlider.addEventListener('touchmove', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var norm = getOpacityNormFromEvent(e);
+        opacityValue = normToOpacity(norm);
+        updateOpacitySlider();
+        applyOverlayOpacity();
+    }, { passive: false });
+
+    opacitySlider.addEventListener('mousedown', function (e) {
+        e.stopPropagation();
+        var norm = getOpacityNormFromEvent(e);
+        opacityValue = normToOpacity(norm);
+        updateOpacitySlider();
+        applyOverlayOpacity();
+
+        function onMove(ev) {
+            var n = getOpacityNormFromEvent(ev);
+            opacityValue = normToOpacity(n);
+            updateOpacitySlider();
+            applyOverlayOpacity();
+        }
+        function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+        }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
+
     // ===== Галерея =====
 
     thumbs.forEach(function (thumb) {
@@ -54,28 +161,29 @@
 
             var src = thumb.getAttribute('data-src');
 
-            // Если уже выбрано это фото — снимаем выбор
             if (currentSrc === src) {
                 currentSrc = null;
                 overlayImg.className = '';
+                overlayImg.style.opacity = '';
                 overlayImg.removeAttribute('src');
                 thumbs.forEach(function (t) { t.classList.remove('active'); });
                 captureBtn.classList.add('hidden');
+                opacitySlider.classList.add('hidden');
                 return;
             }
 
             currentSrc = src;
 
-            // Подсвечиваем активную миниатюру
             thumbs.forEach(function (t) { t.classList.remove('active'); });
             thumb.classList.add('active');
 
-            // Показываем overlay
             overlayImg.src = src;
             overlayImg.className = 'preview';
+            overlayImg.style.opacity = opacityValue;
 
-            // Показываем кнопку съёмки
             captureBtn.classList.remove('hidden');
+            opacitySlider.classList.remove('hidden');
+            updateOpacitySlider();
         });
     });
 
@@ -84,7 +192,6 @@
     captureBtn.addEventListener('click', function () {
         if (!currentSrc || isCompareMode) return;
 
-        // Делаем снимок
         var vw = camera.videoWidth;
         var vh = camera.videoHeight;
         snapshotCanvas.width = vw;
@@ -95,7 +202,6 @@
         var dataUrl = snapshotCanvas.toDataURL('image/jpeg', 0.92);
         snapshotImg.src = dataUrl;
 
-        // Переход в режим сравнения
         enterCompareMode();
     });
 
@@ -104,24 +210,19 @@
     function enterCompareMode() {
         isCompareMode = true;
 
-        // Скрываем камеру
         camera.classList.add('hidden');
-
-        // Показываем снимок
         snapshotImg.classList.add('visible');
 
-        // Overlay на полную непрозрачность
         overlayImg.className = 'compare';
+        overlayImg.style.opacity = '';
 
-        // Скрываем галерею и кнопку съёмки
         gallery.classList.add('hidden');
         captureBtn.classList.add('hidden');
+        opacitySlider.classList.add('hidden');
 
-        // Показываем слайдер и кнопку сброса
         slider.classList.remove('hidden');
-        resetBtn.classList.remove('hidden');
+        topBar.classList.remove('hidden');
 
-        // Устанавливаем слайдер по центру
         sliderX = 0.5;
         updateSlider();
     }
@@ -129,43 +230,37 @@
     function exitCompareMode() {
         isCompareMode = false;
 
-        // Убираем снимок
         snapshotImg.classList.remove('visible');
         snapshotImg.removeAttribute('src');
 
-        // Скрываем слайдер и кнопку сброса
         slider.classList.add('hidden');
-        resetBtn.classList.add('hidden');
+        topBar.classList.add('hidden');
 
-        // Показываем камеру
         camera.classList.remove('hidden');
 
-        // Overlay возвращаем в preview
         overlayImg.className = 'preview';
+        overlayImg.style.opacity = opacityValue;
         overlayImg.style.clipPath = '';
 
-        // Показываем галерею
         gallery.classList.remove('hidden');
 
-        // Показываем кнопку съёмки (если есть выбранное фото)
         if (currentSrc) {
             captureBtn.classList.remove('hidden');
+            opacitySlider.classList.remove('hidden');
+            updateOpacitySlider();
         }
 
-        // Перезапускаем камеру если нужно
         if (!stream) {
             startCamera();
         }
     }
 
-    // ===== Слайдер =====
+    // ===== Слайдер сравнения =====
 
     function updateSlider() {
         var pct = (sliderX * 100).toFixed(2) + '%';
-
         sliderLine.style.left = pct;
         sliderHandle.style.left = pct;
-
         overlayImg.style.clipPath = 'inset(0 ' + ((1 - sliderX) * 100).toFixed(2) + '% 0 0)';
     }
 
@@ -215,11 +310,45 @@
         exitCompareMode();
     });
 
-    // ===== Скрыть кнопку съёмки по умолчанию =====
+    // ===== Сохранить =====
+
+    saveBtn.addEventListener('click', function () {
+        var dataUrl = snapshotCanvas.toDataURL('image/jpeg', 0.92);
+
+        // Попытка через share API (мобильные браузеры)
+        if (navigator.share && navigator.canShare) {
+            snapshotCanvas.toBlob(function (blob) {
+                var file = new File([blob], 'rakurs-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+                if (navigator.canShare({ files: [file] })) {
+                    navigator.share({
+                        files: [file],
+                        title: 'Ракурс'
+                    }).catch(function () {
+                        // Если share отменён — fallback на скачивание
+                        downloadFile(dataUrl);
+                    });
+                } else {
+                    downloadFile(dataUrl);
+                }
+            }, 'image/jpeg', 0.92);
+        } else {
+            downloadFile(dataUrl);
+        }
+    });
+
+    function downloadFile(dataUrl) {
+        downloadLink.href = dataUrl;
+        downloadLink.download = 'rakurs-' + Date.now() + '.jpg';
+        downloadLink.click();
+    }
+
+    // ===== Инициализация =====
 
     captureBtn.classList.add('hidden');
+    opacitySlider.classList.add('hidden');
 
-    // ===== Запуск =====
+    // Установить начальное значение ползунка
+    updateOpacitySlider();
 
     startCamera();
 
