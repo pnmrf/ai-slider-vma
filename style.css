@@ -1,72 +1,332 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Ракурс</title>
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
 
-    <!-- Экран поворота -->
-    <div id="rotate-screen">
-        <p>Пожалуйста, поверните устройство<br>в альбомный режим</p>
-    </div>
+html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    touch-action: none;
+}
 
-    <!-- Основное приложение -->
-    <div id="app">
+/* ===== Экран поворота ===== */
 
-        <!-- Видео с камеры -->
-        <video id="camera" autoplay playsinline muted></video>
+#rotate-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    color: #888;
+    font-size: 16px;
+    line-height: 1.5;
+    text-align: center;
+    justify-content: center;
+    align-items: center;
+}
 
-        <!-- Скрытый canvas для снимка -->
-        <canvas id="snapshot-canvas"></canvas>
+/* ===== Основное приложение ===== */
 
-        <!-- Сделанный снимок (нижний слой в режиме сравнения) -->
-        <img id="snapshot-img" alt="">
+#app {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+}
 
-        <!-- Старое фото поверх камеры / верхний слой сравнения -->
-        <img id="overlay-img" alt="">
+/* Камера */
 
-        <!-- Галерея миниатюр -->
-        <div id="gallery">
-            <div id="gallery-scroll">
-                <img class="thumb" src="1.jpg" data-src="1.jpg" alt="1">
-                <img class="thumb" src="2.jpg" data-src="2.jpg" alt="2">
-                <img class="thumb" src="3.jpg" data-src="3.jpg" alt="3">
-            </div>
-        </div>
+#camera {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+    transition: opacity 0.4s ease;
+}
 
-        <!-- Правая панель: кнопка съёмки + ползунок прозрачности -->
-        <div id="right-panel">
-            <button id="capture-btn" aria-label="Сделать снимок"></button>
-            <div id="opacity-slider" class="hidden">
-                <div id="opacity-track">
-                    <div id="opacity-fill"></div>
-                    <div id="opacity-handle"></div>
-                </div>
-            </div>
-        </div>
+#camera.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
 
-        <!-- Слайдер сравнения -->
-        <div id="slider" class="hidden">
-            <div id="slider-line"></div>
-            <div id="slider-handle"></div>
-        </div>
+/* Canvas скрыт */
 
-        <!-- Кнопки верхней панели: сброс и сохранить -->
-        <div id="top-bar" class="hidden">
-            <button id="reset-btn">Сброс</button>
-            <button id="save-btn">Сохранить</button>
-        </div>
+#snapshot-canvas {
+    display: none;
+}
 
-        <!-- Скрытая ссылка для скачивания -->
-        <a id="download-link" style="display:none;"></a>
+/* Сделанный снимок */
 
-    </div>
+#snapshot-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 2;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
 
-    <script src="script.js"></script>
-</body>
-</html>
+#snapshot-img.visible {
+    opacity: 1;
+}
+
+/* Старое фото поверх */
+
+#overlay-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 3;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+}
+
+#overlay-img.preview {
+    /* opacity задаётся через JS */
+}
+
+#overlay-img.compare {
+    opacity: 1;
+}
+
+/* ===== Галерея ===== */
+
+#gallery {
+    position: absolute;
+    bottom: 16px;
+    left: 0;
+    right: 90px;
+    z-index: 10;
+    padding: 0 16px;
+    transition: opacity 0.3s ease;
+}
+
+#gallery.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#gallery-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 4px 0;
+}
+
+#gallery-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+.thumb {
+    flex-shrink: 0;
+    width: 72px;
+    height: 52px;
+    object-fit: cover;
+    border-radius: 8px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.thumb:active {
+    transform: scale(0.95);
+}
+
+.thumb.active {
+    border-color: #fff;
+}
+
+/* ===== Правая панель ===== */
+
+#right-panel {
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+}
+
+/* ===== Кнопка съёмки ===== */
+
+#capture-btn {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 2.5px solid rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease, opacity 0.3s ease;
+    -webkit-appearance: none;
+    outline: none;
+    flex-shrink: 0;
+}
+
+#capture-btn:active {
+    transform: scale(0.88);
+    background: rgba(255, 255, 255, 0.35);
+}
+
+#capture-btn.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ===== Ползунок прозрачности ===== */
+
+#opacity-slider {
+    width: 36px;
+    height: 120px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    touch-action: none;
+    transition: opacity 0.3s ease;
+}
+
+#opacity-slider.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#opacity-track {
+    position: relative;
+    width: 4px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+}
+
+#opacity-fill {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.6);
+    transition: height 0.05s linear;
+}
+
+#opacity-handle {
+    position: absolute;
+    left: 50%;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #fff;
+    transform: translate(-50%, 50%);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+    transition: bottom 0.05s linear;
+}
+
+/* ===== Слайдер сравнения ===== */
+
+#slider {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    touch-action: none;
+}
+
+#slider.hidden {
+    display: none;
+}
+
+#slider-line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 50%;
+    width: 2px;
+    background: rgba(255, 255, 255, 0.7);
+    transform: translateX(-50%);
+    pointer-events: none;
+}
+
+#slider-handle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid rgba(255, 255, 255, 1);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+}
+
+/* ===== Верхняя панель кнопок ===== */
+
+#top-bar {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    z-index: 10;
+    display: flex;
+    gap: 10px;
+    transition: opacity 0.3s ease;
+}
+
+#top-bar.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#reset-btn,
+#save-btn {
+    padding: 8px 18px;
+    font-size: 14px;
+    color: #fff;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 20px;
+    cursor: pointer;
+    -webkit-appearance: none;
+    outline: none;
+    transition: background 0.15s ease;
+}
+
+#reset-btn:active,
+#save-btn:active {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* ===== Ориентация ===== */
+
+@media (orientation: portrait) {
+    #rotate-screen {
+        display: flex;
+    }
+    #app {
+        display: none;
+    }
+}
+
+@media (orientation: landscape) {
+    #rotate-screen {
+        display: none;
+    }
+    #app {
+        display: block;
+    }
+}
