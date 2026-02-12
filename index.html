@@ -10,27 +10,17 @@
 </head>
 <body>
 
-    <!-- Экран поворота -->
     <div id="rotate-screen">
         <p>Пожалуйста, поверните устройство<br>в альбомный режим</p>
     </div>
 
-    <!-- Основное приложение -->
     <div id="app">
 
-        <!-- Видео с камеры -->
         <video id="camera" autoplay playsinline muted></video>
-
-        <!-- Скрытый canvas для снимка -->
         <canvas id="snapshot-canvas"></canvas>
-
-        <!-- Сделанный снимок (нижний слой в режиме сравнения) -->
         <img id="snapshot-img" alt="">
-
-        <!-- Старое фото поверх камеры / верхний слой сравнения -->
         <img id="overlay-img" alt="">
 
-        <!-- Галерея миниатюр -->
         <div id="gallery">
             <div id="gallery-scroll">
                 <img class="thumb" src="1.jpg" data-src="1.jpg" alt="1">
@@ -39,9 +29,8 @@
             </div>
         </div>
 
-        <!-- Правая панель: кнопка съёмки + ползунок прозрачности -->
         <div id="right-panel">
-            <button id="capture-btn" aria-label="Сделать снимок"></button>
+            <button id="capture-btn" class="hidden" aria-label="Сделать снимок"></button>
             <div id="opacity-slider" class="hidden">
                 <div id="opacity-track">
                     <div id="opacity-fill"></div>
@@ -50,20 +39,17 @@
             </div>
         </div>
 
-        <!-- Слайдер сравнения -->
         <div id="slider" class="hidden">
             <div id="slider-line"></div>
             <div id="slider-handle"></div>
         </div>
 
-        <!-- Кнопки верхней панели: сброс и сохранить -->
         <div id="top-bar" class="hidden">
             <button id="reset-btn">Сброс</button>
             <button id="save-btn">Сохранить</button>
         </div>
 
-        <!-- Скрытая ссылка для скачивания -->
-        <a id="download-link" style="display:none;"></a>
+        <a id="download-link"></a>
 
     </div>
 

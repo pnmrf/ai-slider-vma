@@ -1,7 +1,6 @@
 (function () {
     'use strict';
 
-    // Элементы
     var camera = document.getElementById('camera');
     var snapshotCanvas = document.getElementById('snapshot-canvas');
     var snapshotImg = document.getElementById('snapshot-img');
@@ -16,8 +15,8 @@
     var saveBtn = document.getElementById('save-btn');
     var downloadLink = document.getElementById('download-link');
     var thumbs = document.querySelectorAll('.thumb');
+    var rightPanel = document.getElementById('right-panel');
 
-    // Ползунок прозрачности
     var opacitySlider = document.getElementById('opacity-slider');
     var opacityTrack = document.getElementById('opacity-track');
     var opacityFill = document.getElementById('opacity-fill');
@@ -28,80 +27,44 @@
     var isCompareMode = false;
     var sliderX = 0.5;
 
-    // Прозрачность: 0.10 (верх) .. 0.90 (низ)
-    // opacityValue хранит реальную opacity overlay (0.10 .. 0.90)
-    // По умолчанию середина = 0.45 (примерно)
-    var OPACITY_MIN = 0.10;  // верх ползунка — максимальная прозрачность
-    var OPACITY_MAX = 0.90;  // низ ползунка — минимальная прозрачность
+    // Прозрачность: ползунок вверху = 0.10, внизу = 0.90
+    // По умолчанию 0.45 (середина)
     var opacityValue = 0.45;
-    // normalised: 0 = верх (min opacity), 1 = низ (max opacity)
-    // norm = (opacityValue - OPACITY_MIN) / (OPACITY_MAX - OPACITY_MIN)
-    // opacityValue = OPACITY_MIN + norm * (OPACITY_MAX - OPACITY_MIN)
-
-    function opacityToNorm(val) {
-        return (val - OPACITY_MIN) / (OPACITY_MAX - OPACITY_MIN);
-    }
-
-    function normToOpacity(n) {
-        return OPACITY_MIN + n * (OPACITY_MAX - OPACITY_MIN);
-    }
 
     // ===== Камера =====
 
-    async function startCamera() {
-        try {
-            stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: { ideal: 'environment' },
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                },
-                audio: false
-            });
+    function startCamera() {
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            },
+            audio: false
+        }).then(function (s) {
+            stream = s;
             camera.srcObject = stream;
             camera.play();
-        } catch (err) {
+        }).catch(function (err) {
             console.warn('Камера недоступна:', err);
-        }
+        });
     }
 
-    function stopCamera() {
-        if (stream) {
-            stream.getTracks().forEach(function (t) { t.stop(); });
-            stream = null;
-        }
-        camera.srcObject = null;
+    // ===== Ползунок прозрачности =====
+
+    function updateOpacityUI() {
+        // norm: 0 = верх (opacity 0.10), 1 = низ (opacity 0.90)
+        var norm = (opacityValue - 0.10) / 0.80;
+        norm = Math.max(0, Math.min(1, norm));
+
+        // bottom в процентах: norm=0 -> bottom=100%, norm=1 -> bottom=0%
+        var bottomPct = (1 - norm) * 100;
+
+        opacityHandle.style.bottom = bottomPct + '%';
+        opacityFill.style.height = bottomPct + '%';
     }
 
-    // ===== Применить прозрачность к overlay =====
-
-    function applyOverlayOpacity() {
-        if (!isCompareMode && overlayImg.classList.contains('preview')) {
-            overlayImg.style.opacity = opacityValue;
-        }
-    }
-
-    // ===== Обновление ползунка прозрачности =====
-
-    function updateOpacitySlider() {
-        var norm = opacityToNorm(opacityValue); // 0 = верх, 1 = низ
-        var trackHeight = opacityTrack.offsetHeight;
-        var pxFromBottom = (1 - norm) * trackHeight;
-        // Но ползунок: верх = min opacity (0.10), низ = max opacity (0.90)
-        // norm=0 -> handle вверху, norm=1 -> handle внизу
-        // handle top offset = norm * trackHeight
-        // fill height = (1 - norm) * 100%  — fill снизу показывает «сколько прозрачности»
-
-        var pct = norm * 100;
-        var fillPct = (1 - norm) * 100;
-
-        opacityHandle.style.bottom = fillPct + '%';
-        opacityFill.style.height = fillPct + '%';
-    }
-
-    // ===== Ползунок прозрачности — touch =====
-
-    function getOpacityNormFromEvent(e) {
+    function getOpacityFromTouch(e) {
         var clientY;
         if (e.touches && e.touches.length > 0) {
             clientY = e.touches[0].clientY;
@@ -109,42 +72,36 @@
             clientY = e.clientY;
         }
         var rect = opacityTrack.getBoundingClientRect();
-        // top = 0 (min opacity = 0.10), bottom = 1 (max opacity = 0.90)
+        // norm: 0 вверху, 1 внизу
         var norm = (clientY - rect.top) / rect.height;
-        return Math.max(0, Math.min(1, norm));
+        norm = Math.max(0, Math.min(1, norm));
+        return 0.10 + norm * 0.80;
+    }
+
+    function onOpacityInput(e) {
+        opacityValue = getOpacityFromTouch(e);
+        updateOpacityUI();
+        if (!isCompareMode && currentSrc) {
+            overlayImg.style.opacity = opacityValue;
+        }
     }
 
     opacitySlider.addEventListener('touchstart', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var norm = getOpacityNormFromEvent(e);
-        opacityValue = normToOpacity(norm);
-        updateOpacitySlider();
-        applyOverlayOpacity();
+        onOpacityInput(e);
     }, { passive: false });
 
     opacitySlider.addEventListener('touchmove', function (e) {
         e.preventDefault();
         e.stopPropagation();
-        var norm = getOpacityNormFromEvent(e);
-        opacityValue = normToOpacity(norm);
-        updateOpacitySlider();
-        applyOverlayOpacity();
+        onOpacityInput(e);
     }, { passive: false });
 
     opacitySlider.addEventListener('mousedown', function (e) {
         e.stopPropagation();
-        var norm = getOpacityNormFromEvent(e);
-        opacityValue = normToOpacity(norm);
-        updateOpacitySlider();
-        applyOverlayOpacity();
-
-        function onMove(ev) {
-            var n = getOpacityNormFromEvent(ev);
-            opacityValue = normToOpacity(n);
-            updateOpacitySlider();
-            applyOverlayOpacity();
-        }
+        onOpacityInput(e);
+        function onMove(ev) { onOpacityInput(ev); }
         function onUp() {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
@@ -161,10 +118,10 @@
 
             var src = thumb.getAttribute('data-src');
 
+            // Снять выбор
             if (currentSrc === src) {
                 currentSrc = null;
-                overlayImg.className = '';
-                overlayImg.style.opacity = '';
+                overlayImg.style.opacity = '0';
                 overlayImg.removeAttribute('src');
                 thumbs.forEach(function (t) { t.classList.remove('active'); });
                 captureBtn.classList.add('hidden');
@@ -178,12 +135,11 @@
             thumb.classList.add('active');
 
             overlayImg.src = src;
-            overlayImg.className = 'preview';
             overlayImg.style.opacity = opacityValue;
 
             captureBtn.classList.remove('hidden');
             opacitySlider.classList.remove('hidden');
-            updateOpacitySlider();
+            updateOpacityUI();
         });
     });
 
@@ -194,13 +150,15 @@
 
         var vw = camera.videoWidth;
         var vh = camera.videoHeight;
+
+        if (!vw || !vh) return;
+
         snapshotCanvas.width = vw;
         snapshotCanvas.height = vh;
         var ctx = snapshotCanvas.getContext('2d');
         ctx.drawImage(camera, 0, 0, vw, vh);
 
-        var dataUrl = snapshotCanvas.toDataURL('image/jpeg', 0.92);
-        snapshotImg.src = dataUrl;
+        snapshotImg.src = snapshotCanvas.toDataURL('image/jpeg', 0.92);
 
         enterCompareMode();
     });
@@ -213,18 +171,19 @@
         camera.classList.add('hidden');
         snapshotImg.classList.add('visible');
 
-        overlayImg.className = 'compare';
-        overlayImg.style.opacity = '';
+        overlayImg.style.opacity = '1';
+        overlayImg.style.clipPath = '';
 
         gallery.classList.add('hidden');
         captureBtn.classList.add('hidden');
         opacitySlider.classList.add('hidden');
+        rightPanel.style.display = 'none';
 
         slider.classList.remove('hidden');
         topBar.classList.remove('hidden');
 
         sliderX = 0.5;
-        updateSlider();
+        updateCompareSlider();
     }
 
     function exitCompareMode() {
@@ -237,8 +196,8 @@
         topBar.classList.add('hidden');
 
         camera.classList.remove('hidden');
+        rightPanel.style.display = '';
 
-        overlayImg.className = 'preview';
         overlayImg.style.opacity = opacityValue;
         overlayImg.style.clipPath = '';
 
@@ -247,7 +206,7 @@
         if (currentSrc) {
             captureBtn.classList.remove('hidden');
             opacitySlider.classList.remove('hidden');
-            updateOpacitySlider();
+            updateOpacityUI();
         }
 
         if (!stream) {
@@ -257,7 +216,7 @@
 
     // ===== Слайдер сравнения =====
 
-    function updateSlider() {
+    function updateCompareSlider() {
         var pct = (sliderX * 100).toFixed(2) + '%';
         sliderLine.style.left = pct;
         sliderHandle.style.left = pct;
@@ -279,22 +238,21 @@
     slider.addEventListener('touchstart', function (e) {
         e.preventDefault();
         sliderX = getSliderXFromEvent(e);
-        updateSlider();
+        updateCompareSlider();
     }, { passive: false });
 
     slider.addEventListener('touchmove', function (e) {
         e.preventDefault();
         sliderX = getSliderXFromEvent(e);
-        updateSlider();
+        updateCompareSlider();
     }, { passive: false });
 
     slider.addEventListener('mousedown', function (e) {
         sliderX = getSliderXFromEvent(e);
-        updateSlider();
-
+        updateCompareSlider();
         function onMove(ev) {
             sliderX = getSliderXFromEvent(ev);
-            updateSlider();
+            updateCompareSlider();
         }
         function onUp() {
             document.removeEventListener('mousemove', onMove);
@@ -315,40 +273,31 @@
     saveBtn.addEventListener('click', function () {
         var dataUrl = snapshotCanvas.toDataURL('image/jpeg', 0.92);
 
-        // Попытка через share API (мобильные браузеры)
-        if (navigator.share && navigator.canShare) {
+        // Пробуем Web Share API
+        if (navigator.share) {
             snapshotCanvas.toBlob(function (blob) {
-                var file = new File([blob], 'rakurs-' + Date.now() + '.jpg', { type: 'image/jpeg' });
-                if (navigator.canShare({ files: [file] })) {
-                    navigator.share({
-                        files: [file],
-                        title: 'Ракурс'
-                    }).catch(function () {
-                        // Если share отменён — fallback на скачивание
-                        downloadFile(dataUrl);
-                    });
-                } else {
-                    downloadFile(dataUrl);
+                if (!blob) {
+                    doDownload(dataUrl);
+                    return;
                 }
+                var file = new File([blob], 'rakurs-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+
+                navigator.share({ files: [file] }).catch(function () {
+                    doDownload(dataUrl);
+                });
             }, 'image/jpeg', 0.92);
         } else {
-            downloadFile(dataUrl);
+            doDownload(dataUrl);
         }
     });
 
-    function downloadFile(dataUrl) {
+    function doDownload(dataUrl) {
         downloadLink.href = dataUrl;
         downloadLink.download = 'rakurs-' + Date.now() + '.jpg';
         downloadLink.click();
     }
 
-    // ===== Инициализация =====
-
-    captureBtn.classList.add('hidden');
-    opacitySlider.classList.add('hidden');
-
-    // Установить начальное значение ползунка
-    updateOpacitySlider();
+    // ===== Запуск =====
 
     startCamera();
 

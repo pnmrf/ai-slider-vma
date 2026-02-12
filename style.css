@@ -14,8 +14,6 @@ html, body {
     touch-action: none;
 }
 
-/* ===== Экран поворота ===== */
-
 #rotate-screen {
     display: none;
     position: fixed;
@@ -30,15 +28,11 @@ html, body {
     align-items: center;
 }
 
-/* ===== Основное приложение ===== */
-
 #app {
     position: fixed;
     inset: 0;
     overflow: hidden;
 }
-
-/* Камера */
 
 #camera {
     position: absolute;
@@ -55,13 +49,9 @@ html, body {
     pointer-events: none;
 }
 
-/* Canvas скрыт */
-
 #snapshot-canvas {
     display: none;
 }
-
-/* Сделанный снимок */
 
 #snapshot-img {
     position: absolute;
@@ -79,8 +69,6 @@ html, body {
     opacity: 1;
 }
 
-/* Старое фото поверх */
-
 #overlay-img {
     position: absolute;
     inset: 0;
@@ -91,14 +79,6 @@ html, body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.35s ease;
-}
-
-#overlay-img.preview {
-    /* opacity задаётся через JS */
-}
-
-#overlay-img.compare {
-    opacity: 1;
 }
 
 /* ===== Галерея ===== */
@@ -161,10 +141,8 @@ html, body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
+    gap: 14px;
 }
-
-/* ===== Кнопка съёмки ===== */
 
 #capture-btn {
     width: 56px;
@@ -192,7 +170,7 @@ html, body {
 /* ===== Ползунок прозрачности ===== */
 
 #opacity-slider {
-    width: 36px;
+    width: 40px;
     height: 120px;
     display: flex;
     justify-content: center;
@@ -219,14 +197,15 @@ html, body {
     bottom: 0;
     left: 0;
     width: 100%;
+    height: 50%;
     border-radius: 2px;
-    background: rgba(255, 255, 255, 0.6);
-    transition: height 0.05s linear;
+    background: rgba(255, 255, 255, 0.5);
 }
 
 #opacity-handle {
     position: absolute;
     left: 50%;
+    bottom: 50%;
     width: 22px;
     height: 22px;
     border-radius: 50%;
@@ -234,7 +213,6 @@ html, body {
     border: 2px solid #fff;
     transform: translate(-50%, 50%);
     box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
-    transition: bottom 0.05s linear;
 }
 
 /* ===== Слайдер сравнения ===== */
@@ -269,13 +247,13 @@ html, body {
     height: 36px;
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.9);
-    border: 2px solid rgba(255, 255, 255, 1);
+    border: 2px solid #fff;
     transform: translate(-50%, -50%);
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.4);
     pointer-events: none;
 }
 
-/* ===== Верхняя панель кнопок ===== */
+/* ===== Верхняя панель ===== */
 
 #top-bar {
     position: absolute;
@@ -309,6 +287,10 @@ html, body {
 #reset-btn:active,
 #save-btn:active {
     background: rgba(255, 255, 255, 0.25);
+}
+
+#download-link {
+    display: none;
 }
 
 /* ===== Ориентация ===== */
